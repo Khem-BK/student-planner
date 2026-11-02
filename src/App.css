@@ -114,3 +114,19 @@ button.primary {
 .priority-low {
   color: #027a48;
 }
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.assignment-list li.editing {
+  border: 2px solid #1d4ed8;
+  background: #f8faff;
+}
