@@ -5,17 +5,21 @@ const STORAGE_KEY = 'student-planner-assignments'
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 }
 const DAYS_TO_KEEP_OVERDUE = 7
 const MAX_DAYS_AHEAD = 730 // about 2 years
+const TRASH_DAYS = 7
+const DAY_MS = 24 * 60 * 60 * 1000 // one day in milliseconds
 
 function loadAssignments() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? JSON.parse(saved) : []
+    const list = saved ? JSON.parse(saved) : []
+    // Remove anything that has been in the trash longer than TRASH_DAYS
+    const now = Date.now()
+    return list.filter((a) => !a.deletedAt || now - a.deletedAt < TRASH_DAYS * DAY_MS)
   } catch {
     return []
   }
 }
 
-// Turn a Date into text like "2026-11-02"
 function toDateText(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -43,7 +47,6 @@ function formatDate(dateText) {
   })
 }
 
-// Returns an error message, or '' if the date is fine
 function validateDueDate(dateText) {
   if (!dateText) return ''
   const today = todayText()
@@ -56,7 +59,6 @@ function validateDueDate(dateText) {
   return ''
 }
 
-// Due more than 7 days ago?
 function isOld(assignment) {
   return Boolean(
     assignment.dueDate &&
@@ -64,13 +66,18 @@ function isOld(assignment) {
   )
 }
 
-// "Overdue", "Due today", or nothing
 function getStatus(assignment) {
   if (assignment.completed || !assignment.dueDate) return null
   const today = todayText()
   if (assignment.dueDate < today) return { label: 'Overdue', className: 'badge-overdue' }
   if (assignment.dueDate === today) return { label: 'Due today', className: 'badge-today' }
   return null
+}
+
+// How many days until a trashed item is removed for good
+function daysLeftInTrash(assignment) {
+  const daysPassed = Math.floor((Date.now() - assignment.deletedAt) / DAY_MS)
+  return Math.max(TRASH_DAYS - daysPassed, 1)
 }
 
 function sortAssignments(list, sortBy) {
@@ -108,6 +115,9 @@ function App() {
   // Sorting
   const [sortBy, setSortBy] = useState('dueDate')
 
+  // The most recently deleted item, for the Undo message
+  const [lastDeleted, setLastDeleted] = useState(null)
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(assignments))
   }, [assignments])
@@ -129,6 +139,7 @@ function App() {
       dueDate,
       priority,
       completed: false,
+      deletedAt: null,
     }
 
     setAssignments([...assignments, newAssignment])
@@ -147,8 +158,38 @@ function App() {
     )
   }
 
+  // Move to trash (not gone yet)
   function deleteAssignment(id) {
+    const target = assignments.find((a) => a.id === id)
+    setAssignments(
+      assignments.map((a) => (a.id === id ? { ...a, deletedAt: Date.now() } : a))
+    )
+    setLastDeleted({ id, title: target.title })
+  }
+
+  // Take it back out of the trash
+  function restoreAssignment(id) {
+    setAssignments(
+      assignments.map((a) => (a.id === id ? { ...a, deletedAt: null } : a))
+    )
+    if (lastDeleted && lastDeleted.id === id) setLastDeleted(null)
+  }
+
+  function undoDelete() {
+    restoreAssignment(lastDeleted.id)
+    setLastDeleted(null)
+  }
+
+  // Gone for good
+  function deleteForever(id) {
     setAssignments(assignments.filter((a) => a.id !== id))
+  }
+
+  function emptyTrash() {
+    const sure = window.confirm(
+      'Permanently delete everything in the trash? This cannot be undone.'
+    )
+    if (sure) setAssignments(assignments.filter((a) => !a.deletedAt))
   }
 
   function startEditing(assignment) {
@@ -172,7 +213,6 @@ function App() {
     event.preventDefault()
     if (!editDraft.title.trim()) return
 
-    // Only check the date if the user changed it
     const original = assignments.find((a) => a.id === editingId)
     const error =
       editDraft.dueDate !== original.dueDate ? validateDueDate(editDraft.dueDate) : ''
@@ -191,7 +231,6 @@ function App() {
     cancelEditing()
   }
 
-  // Draws one assignment card (normal view or edit view)
   function renderAssignment(a) {
     if (editingId === a.id) {
       return (
@@ -300,7 +339,11 @@ function App() {
     )
   }
 
-  const sorted = sortAssignments(assignments, sortBy)
+  // Split the list: active vs. in the trash
+  const activeAssignments = assignments.filter((a) => !a.deletedAt)
+  const trashedAssignments = assignments.filter((a) => a.deletedAt)
+
+  const sorted = sortAssignments(activeAssignments, sortBy)
   const currentAssignments = sorted.filter((a) => !isOld(a))
   const olderAssignments = sorted.filter((a) => isOld(a))
 
@@ -372,9 +415,28 @@ function App() {
       </section>
 
       <section aria-labelledby="list-heading" className="card">
-        <h2 id="list-heading">My assignments ({assignments.length})</h2>
+        <h2 id="list-heading">My assignments ({activeAssignments.length})</h2>
 
-        {assignments.length > 0 && (
+        {/* Screen readers announce anything that appears in here */}
+        <div role="status" aria-live="polite">
+          {lastDeleted && (
+            <div className="undo-bar">
+              <span>Moved “{lastDeleted.title}” to the trash.</span>
+              <button type="button" onClick={undoDelete}>
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={() => setLastDeleted(null)}
+                aria-label="Dismiss message"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+
+        {activeAssignments.length > 0 && (
           <div className="sort-bar">
             <label htmlFor="sortBy">Sort by</label>
             <select
@@ -390,7 +452,7 @@ function App() {
           </div>
         )}
 
-        {assignments.length === 0 ? (
+        {activeAssignments.length === 0 ? (
           <p>No assignments yet. Add your first one above.</p>
         ) : (
           <>
@@ -416,6 +478,53 @@ function App() {
           </>
         )}
       </section>
+
+      {trashedAssignments.length > 0 && (
+        <section aria-label="Trash" className="card">
+          <details className="trash">
+            <summary>
+              Trash ({trashedAssignments.length}): items are deleted forever after{' '}
+              {TRASH_DAYS} days
+            </summary>
+
+            <ul className="assignment-list">
+              {trashedAssignments.map((a) => {
+                const days = daysLeftInTrash(a)
+                return (
+                  <li key={a.id}>
+                    <p className="assignment-title trash-title">{a.title}</p>
+                    <p className="trash-details">
+                      {a.course || 'No course'} · Deleted forever in {days}{' '}
+                      {days === 1 ? 'day' : 'days'}
+                    </p>
+                    <div className="actions">
+                      <button
+                        type="button"
+                        onClick={() => restoreAssignment(a.id)}
+                        aria-label={`Restore ${a.title}`}
+                      >
+                        Restore
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => deleteForever(a.id)}
+                        aria-label={`Delete ${a.title} forever`}
+                      >
+                        Delete forever
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <button type="button" className="danger empty-trash" onClick={emptyTrash}>
+              Empty trash
+            </button>
+          </details>
+        </section>
+      )}
     </main>
   )
 }

@@ -170,3 +170,48 @@ input[aria-invalid='true'] {
 .older .assignment-list {
   margin-top: 12px;
 }
+.undo-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #eef4ff;
+  border: 1px solid #1d4ed8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.undo-bar span {
+  flex: 1;
+}
+
+.trash summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.trash .assignment-list {
+  margin-top: 12px;
+}
+
+.trash-title {
+  font-weight: 600;
+  margin: 0;
+}
+
+.trash-details {
+  margin: 4px 0 12px;
+  color: #475467;
+}
+
+button.danger {
+  background: #fef3f2;
+  color: #912018;
+  border-color: #fda29b;
+}
+
+.empty-trash {
+  margin-top: 16px;
+}
