@@ -3,6 +3,8 @@ import './App.css'
 
 const STORAGE_KEY = 'student-planner-assignments'
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 }
+const DAYS_TO_KEEP_OVERDUE = 7
+const MAX_DAYS_AHEAD = 730 // about 2 years
 
 function loadAssignments() {
   try {
@@ -11,6 +13,24 @@ function loadAssignments() {
   } catch {
     return []
   }
+}
+
+// Turn a Date into text like "2026-11-02"
+function toDateText(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function todayText() {
+  return toDateText(new Date())
+}
+
+function addDays(dateText, days) {
+  const date = new Date(dateText + 'T00:00')
+  date.setDate(date.getDate() + days)
+  return toDateText(date)
 }
 
 function formatDate(dateText) {
@@ -23,13 +43,42 @@ function formatDate(dateText) {
   })
 }
 
-// Make a sorted COPY of the list (the original order stays saved)
+// Returns an error message, or '' if the date is fine
+function validateDueDate(dateText) {
+  if (!dateText) return ''
+  const today = todayText()
+  if (dateText < addDays(today, -DAYS_TO_KEEP_OVERDUE)) {
+    return `That date is more than ${DAYS_TO_KEEP_OVERDUE} days in the past. Please check the year.`
+  }
+  if (dateText > addDays(today, MAX_DAYS_AHEAD)) {
+    return 'That date is more than 2 years away. Please check the year.'
+  }
+  return ''
+}
+
+// Due more than 7 days ago?
+function isOld(assignment) {
+  return Boolean(
+    assignment.dueDate &&
+      assignment.dueDate < addDays(todayText(), -DAYS_TO_KEEP_OVERDUE)
+  )
+}
+
+// "Overdue", "Due today", or nothing
+function getStatus(assignment) {
+  if (assignment.completed || !assignment.dueDate) return null
+  const today = todayText()
+  if (assignment.dueDate < today) return { label: 'Overdue', className: 'badge-overdue' }
+  if (assignment.dueDate === today) return { label: 'Due today', className: 'badge-today' }
+  return null
+}
+
 function sortAssignments(list, sortBy) {
   const copy = [...list]
   if (sortBy === 'dueDate') {
     copy.sort((a, b) => {
       if (!a.dueDate && !b.dueDate) return 0
-      if (!a.dueDate) return 1 // no date goes to the bottom
+      if (!a.dueDate) return 1
       if (!b.dueDate) return -1
       return a.dueDate.localeCompare(b.dueDate)
     })
@@ -49,10 +98,12 @@ function App() {
   const [course, setCourse] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState('Medium')
+  const [addError, setAddError] = useState('')
 
-  // Editing: which card is open, and its unsaved changes
+  // Editing
   const [editingId, setEditingId] = useState(null)
   const [editDraft, setEditDraft] = useState(null)
+  const [editError, setEditError] = useState('')
 
   // Sorting
   const [sortBy, setSortBy] = useState('dueDate')
@@ -64,6 +115,12 @@ function App() {
   function handleAdd(event) {
     event.preventDefault()
     if (!title.trim()) return
+
+    const error = validateDueDate(dueDate)
+    if (error) {
+      setAddError(error)
+      return
+    }
 
     const newAssignment = {
       id: crypto.randomUUID(),
@@ -79,6 +136,7 @@ function App() {
     setCourse('')
     setDueDate('')
     setPriority('Medium')
+    setAddError('')
   }
 
   function toggleCompleted(id) {
@@ -95,21 +153,33 @@ function App() {
 
   function startEditing(assignment) {
     setEditingId(assignment.id)
-    setEditDraft({ ...assignment }) // work on a copy until Save
+    setEditDraft({ ...assignment })
+    setEditError('')
   }
 
   function cancelEditing() {
     setEditingId(null)
     setEditDraft(null)
+    setEditError('')
   }
 
   function updateDraft(field, value) {
     setEditDraft({ ...editDraft, [field]: value })
+    if (field === 'dueDate') setEditError('')
   }
 
   function saveEdit(event) {
     event.preventDefault()
     if (!editDraft.title.trim()) return
+
+    // Only check the date if the user changed it
+    const original = assignments.find((a) => a.id === editingId)
+    const error =
+      editDraft.dueDate !== original.dueDate ? validateDueDate(editDraft.dueDate) : ''
+    if (error) {
+      setEditError(error)
+      return
+    }
 
     setAssignments(
       assignments.map((a) =>
@@ -121,7 +191,118 @@ function App() {
     cancelEditing()
   }
 
-  const shownAssignments = sortAssignments(assignments, sortBy)
+  // Draws one assignment card (normal view or edit view)
+  function renderAssignment(a) {
+    if (editingId === a.id) {
+      return (
+        <li key={a.id} className="editing">
+          <form onSubmit={saveEdit} className="assignment-form">
+            <div className="field">
+              <label htmlFor={`edit-title-${a.id}`}>Title (required)</label>
+              <input
+                id={`edit-title-${a.id}`}
+                value={editDraft.title}
+                onChange={(e) => updateDraft('title', e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor={`edit-course-${a.id}`}>Course</label>
+              <input
+                id={`edit-course-${a.id}`}
+                value={editDraft.course}
+                onChange={(e) => updateDraft('course', e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor={`edit-date-${a.id}`}>Due date</label>
+              <input
+                id={`edit-date-${a.id}`}
+                type="date"
+                value={editDraft.dueDate}
+                onChange={(e) => updateDraft('dueDate', e.target.value)}
+                aria-invalid={editError ? 'true' : undefined}
+                aria-describedby={editError ? `edit-date-error-${a.id}` : undefined}
+              />
+              {editError && (
+                <p id={`edit-date-error-${a.id}`} className="error" role="alert">
+                  {editError}
+                </p>
+              )}
+            </div>
+
+            <div className="field">
+              <label htmlFor={`edit-priority-${a.id}`}>Priority</label>
+              <select
+                id={`edit-priority-${a.id}`}
+                value={editDraft.priority}
+                onChange={(e) => updateDraft('priority', e.target.value)}
+              >
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+              </select>
+            </div>
+
+            <div className="actions">
+              <button type="submit" className="primary">Save changes</button>
+              <button type="button" onClick={cancelEditing}>Cancel</button>
+            </div>
+          </form>
+        </li>
+      )
+    }
+
+    const status = getStatus(a)
+
+    return (
+      <li key={a.id} className={a.completed ? 'done' : ''}>
+        <div className="assignment-main">
+          <input
+            type="checkbox"
+            id={`done-${a.id}`}
+            checked={a.completed}
+            onChange={() => toggleCompleted(a.id)}
+          />
+          <label htmlFor={`done-${a.id}`} className="assignment-title">
+            {a.title}
+          </label>
+          {status && <span className={`badge ${status.className}`}>{status.label}</span>}
+        </div>
+
+        <p className="details">
+          {a.course || 'No course'} · Due {formatDate(a.dueDate)} ·{' '}
+          <span className={`priority priority-${a.priority.toLowerCase()}`}>
+            {a.priority} priority
+          </span>
+        </p>
+
+        <div className="actions">
+          <button
+            type="button"
+            onClick={() => startEditing(a)}
+            aria-label={`Edit ${a.title}`}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteAssignment(a.id)}
+            aria-label={`Delete ${a.title}`}
+          >
+            Delete
+          </button>
+        </div>
+      </li>
+    )
+  }
+
+  const sorted = sortAssignments(assignments, sortBy)
+  const currentAssignments = sorted.filter((a) => !isOld(a))
+  const olderAssignments = sorted.filter((a) => isOld(a))
 
   return (
     <main className="app">
@@ -157,8 +338,18 @@ function App() {
               id="dueDate"
               type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => {
+                setDueDate(e.target.value)
+                setAddError('')
+              }}
+              aria-invalid={addError ? 'true' : undefined}
+              aria-describedby={addError ? 'dueDate-error' : undefined}
             />
+            {addError && (
+              <p id="dueDate-error" className="error" role="alert">
+                {addError}
+              </p>
+            )}
           </div>
 
           <div className="field">
@@ -202,103 +393,27 @@ function App() {
         {assignments.length === 0 ? (
           <p>No assignments yet. Add your first one above.</p>
         ) : (
-          <ul className="assignment-list">
-            {shownAssignments.map((a) =>
-              editingId === a.id ? (
-                // EDIT MODE for this card
-                <li key={a.id} className="editing">
-                  <form onSubmit={saveEdit} className="assignment-form">
-                    <div className="field">
-                      <label htmlFor={`edit-title-${a.id}`}>Title (required)</label>
-                      <input
-                        id={`edit-title-${a.id}`}
-                        value={editDraft.title}
-                        onChange={(e) => updateDraft('title', e.target.value)}
-                        required
-                        autoFocus
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor={`edit-course-${a.id}`}>Course</label>
-                      <input
-                        id={`edit-course-${a.id}`}
-                        value={editDraft.course}
-                        onChange={(e) => updateDraft('course', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor={`edit-date-${a.id}`}>Due date</label>
-                      <input
-                        id={`edit-date-${a.id}`}
-                        type="date"
-                        value={editDraft.dueDate}
-                        onChange={(e) => updateDraft('dueDate', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor={`edit-priority-${a.id}`}>Priority</label>
-                      <select
-                        id={`edit-priority-${a.id}`}
-                        value={editDraft.priority}
-                        onChange={(e) => updateDraft('priority', e.target.value)}
-                      >
-                        <option>Low</option>
-                        <option>Medium</option>
-                        <option>High</option>
-                      </select>
-                    </div>
-
-                    <div className="actions">
-                      <button type="submit" className="primary">Save changes</button>
-                      <button type="button" onClick={cancelEditing}>Cancel</button>
-                    </div>
-                  </form>
-                </li>
-              ) : (
-                // NORMAL VIEW for this card
-                <li key={a.id} className={a.completed ? 'done' : ''}>
-                  <div className="assignment-main">
-                    <input
-                      type="checkbox"
-                      id={`done-${a.id}`}
-                      checked={a.completed}
-                      onChange={() => toggleCompleted(a.id)}
-                    />
-                    <label htmlFor={`done-${a.id}`} className="assignment-title">
-                      {a.title}
-                    </label>
-                  </div>
-
-                  <p className="details">
-                    {a.course || 'No course'} · Due {formatDate(a.dueDate)} ·{' '}
-                    <span className={`priority priority-${a.priority.toLowerCase()}`}>
-                      {a.priority} priority
-                    </span>
-                  </p>
-
-                  <div className="actions">
-                    <button
-                      type="button"
-                      onClick={() => startEditing(a)}
-                      aria-label={`Edit ${a.title}`}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteAssignment(a.id)}
-                      aria-label={`Delete ${a.title}`}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              )
+          <>
+            {currentAssignments.length === 0 ? (
+              <p>Nothing due right now.</p>
+            ) : (
+              <ul className="assignment-list">
+                {currentAssignments.map(renderAssignment)}
+              </ul>
             )}
-          </ul>
+
+            {olderAssignments.length > 0 && (
+              <details className="older">
+                <summary>
+                  Older assignments ({olderAssignments.length}), due more than{' '}
+                  {DAYS_TO_KEEP_OVERDUE} days ago
+                </summary>
+                <ul className="assignment-list">
+                  {olderAssignments.map(renderAssignment)}
+                </ul>
+              </details>
+            )}
+          </>
         )}
       </section>
     </main>

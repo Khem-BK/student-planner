@@ -130,3 +130,43 @@ button.primary {
   border: 2px solid #1d4ed8;
   background: #f8faff;
 }
+.error {
+  color: #b42318;
+  font-weight: 600;
+  margin: 0;
+}
+
+input[aria-invalid='true'] {
+  border: 2px solid #b42318;
+}
+
+.badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.badge-overdue {
+  background: #fee4e2;
+  color: #912018;
+}
+
+.badge-today {
+  background: #fef0c7;
+  color: #93370d;
+}
+
+.older {
+  margin-top: 20px;
+}
+
+.older summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+
+.older .assignment-list {
+  margin-top: 12px;
+}
