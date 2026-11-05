@@ -215,3 +215,21 @@ button.danger {
 .empty-trash {
   margin-top: 16px;
 }
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.results-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.results {
+  margin: 0;
+  color: #475467;
+}
