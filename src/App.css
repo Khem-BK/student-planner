@@ -26,7 +26,7 @@
 }
 
 /* ---------- Colors: high contrast mode ---------- */
-html[data-contrast='high'] {
+html[data-theme='contrast'] {
   color-scheme: dark;
   --bg: #000000;
   --surface: #000000;
@@ -389,4 +389,115 @@ kbd {
   font-family: inherit;
   font-weight: 700;
   color: var(--text);
+}
+/* ---------- Colors: dark mode ---------- */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --text: #f1f5f9;
+  --muted: #cbd5e1;
+  --border: #334155;
+  --input-border: #64748b;
+  --primary: #60a5fa;
+  --primary-text: #0f172a;
+  --button-bg: #334155;
+  --focus: #fbbf24;
+  --danger-bg: #3b1d1d;
+  --danger-text: #fca5a5;
+  --danger-border: #7f1d1d;
+  --error: #fca5a5;
+  --high: #fca5a5;
+  --medium: #fcd34d;
+  --low: #86efac;
+  --overdue-bg: #3b1d1d;
+  --overdue-text: #fca5a5;
+  --today-bg: #3a2e0b;
+  --today-text: #fde68a;
+  --info-bg: #1e3a5f;
+  --edit-bg: #172554;
+}
+
+/* ---------- Wider page + header date ---------- */
+.app-header,
+.app {
+  max-width: 72rem;
+}
+
+.today {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+/* ---------- Summary boxes ---------- */
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 12px;
+}
+
+.summary-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.summary-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.summary-warn {
+  border: 2px solid var(--overdue-text);
+}
+
+.summary-warn .summary-value {
+  color: var(--overdue-text);
+}
+
+/* ---------- Two columns on wide screens ---------- */
+.layout {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: 22rem 1fr;
+    align-items: start;
+  }
+
+  .layout-side {
+    position: sticky;
+    top: 16px;
+  }
+}
+/* Summary boxes are buttons now */
+button.summary-item {
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+button.summary-item:hover {
+  border-color: var(--primary);
+}
+
+/* The selected box */
+button.summary-item[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 3px var(--primary);
+  background: var(--info-bg);
 }

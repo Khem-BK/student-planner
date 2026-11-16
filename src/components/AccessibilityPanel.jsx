@@ -6,10 +6,15 @@ const TEXT_SIZES = [
   { value: 'xlarge', label: 'Extra large' },
 ]
 
+const THEMES = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'contrast', label: 'High contrast' },
+]
+
 function AccessibilityPanel({ prefs, onChange, onReset, onClose }) {
   const headingRef = useRef(null)
 
-  // When the panel opens, move keyboard focus to its heading
   useEffect(() => {
     headingRef.current?.focus()
   }, [])
@@ -52,14 +57,23 @@ function AccessibilityPanel({ prefs, onChange, onReset, onClose }) {
         </div>
       </fieldset>
 
-      <label className="checkbox-option">
-        <input
-          type="checkbox"
-          checked={prefs.highContrast}
-          onChange={(e) => update('highContrast', e.target.checked)}
-        />
-        High contrast mode
-      </label>
+      <fieldset>
+        <legend>Color theme</legend>
+        <div className="radio-group">
+          {THEMES.map((theme) => (
+            <label key={theme.value} className="radio-option">
+              <input
+                type="radio"
+                name="theme"
+                value={theme.value}
+                checked={prefs.theme === theme.value}
+                onChange={() => update('theme', theme.value)}
+              />
+              {theme.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="checkbox-option">
         <input

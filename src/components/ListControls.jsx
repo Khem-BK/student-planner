@@ -53,6 +53,7 @@ function ListControls({
             <option value="todo">To do</option>
             <option value="done">Done</option>
             <option value="overdue">Overdue</option>
+             <option value="today">Due today</option>
           </select>
         </div>
       </div>

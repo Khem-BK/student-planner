@@ -74,6 +74,7 @@ export function filterAssignments(list, courseFilter, statusFilter) {
     if (statusFilter === 'todo' && a.completed) return false
     if (statusFilter === 'done' && !a.completed) return false
     if (statusFilter === 'overdue' && !isOverdue(a)) return false
+        if (statusFilter === 'today' && (a.completed || a.dueDate !== todayText())) return false
     return true
   })
 }

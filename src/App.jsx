@@ -5,7 +5,8 @@ import AssignmentItem from './components/AssignmentItem'
 import ListControls from './components/ListControls'
 import TrashSection from './components/TrashSection'
 import AccessibilityPanel from './components/AccessibilityPanel'
-import { DAYS_TO_KEEP_OVERDUE } from './utils/dates'
+import SummaryBar from './components/SummaryBar'
+import { DAYS_TO_KEEP_OVERDUE, formatDate, todayText } from './utils/dates'
 import {
   loadAssignments,
   saveAssignments,
@@ -28,7 +29,6 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [lastDeleted, setLastDeleted] = useState(null)
 
-  // Accessibility settings
   const [prefs, setPrefs] = useState(loadPreferences)
   const [panelOpen, setPanelOpen] = useState(false)
   const settingsButtonRef = useRef(null)
@@ -37,7 +37,6 @@ function App() {
     saveAssignments(assignments)
   }, [assignments])
 
-  // Save the settings and apply them to the page whenever they change
   useEffect(() => {
     savePreferences(prefs)
     applyPreferences(prefs)
@@ -45,7 +44,7 @@ function App() {
 
   function closePanel() {
     setPanelOpen(false)
-    settingsButtonRef.current?.focus() // send focus back to the button
+    settingsButtonRef.current?.focus()
   }
 
   // Keyboard shortcuts: Option (Alt) + N, L, or A
@@ -124,6 +123,11 @@ function App() {
     )
     if (sure) setAssignments(assignments.filter((a) => !a.deletedAt))
   }
+  // Clicking a summary box filters the list and jumps to it
+  function handleSummaryClick(status) {
+    setStatusFilter(statusFilter === status ? 'all' : status)
+    document.getElementById('list-heading')?.focus()
+  }
 
   function clearFilters() {
     setCourseFilter('all')
@@ -155,13 +159,15 @@ function App() {
 
   return (
     <>
-      {/* Hidden until a keyboard user presses Tab */}
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
       <header className="app-header">
-        <h1>My Student Planner</h1>
+        <div>
+          <h1>My Student Planner</h1>
+          <p className="today">{formatDate(todayText())}</p>
+        </div>
         <button
           ref={settingsButtonRef}
           type="button"
@@ -184,71 +190,85 @@ function App() {
           />
         )}
 
-        <AddAssignmentForm onAdd={addAssignment} />
+               <SummaryBar
+          assignments={active}
+          activeStatus={statusFilter}
+          onSelect={handleSummaryClick}
+        />
 
-        <section aria-labelledby="list-heading" className="card">
-          <h2 id="list-heading" tabIndex="-1">
-            My assignments ({active.length})
-          </h2>
-
-          <div role="status" aria-live="polite">
-            {lastDeleted && (
-              <div className="undo-bar">
-                <span>Moved “{lastDeleted.title}” to the trash.</span>
-                <button type="button" onClick={undoDelete}>
-                  Undo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLastDeleted(null)}
-                  aria-label="Dismiss message"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
+        <div className="layout">
+          {/* Left column on laptops: the add form */}
+          <div className="layout-side">
+            <AddAssignmentForm onAdd={addAssignment} />
           </div>
 
-          {active.length === 0 ? (
-            <p>No assignments yet. Add your first one above.</p>
-          ) : (
-            <>
-              <ListControls
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                courseFilter={courseFilter}
-                onCourseChange={setCourseFilter}
-                statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
-                courses={courses}
-                shownCount={shown.length}
-                totalCount={active.length}
-                onClear={clearFilters}
-              />
+          {/* Right column on laptops: the list and trash */}
+          <div className="layout-main">
+            <section aria-labelledby="list-heading" className="card">
+              <h2 id="list-heading" tabIndex="-1">
+                My assignments ({active.length})
+              </h2>
 
-              {shown.length === 0 && <p>No assignments match these filters.</p>}
-              {shown.length > 0 && current.length === 0 && <p>Nothing due right now.</p>}
-              {current.length > 0 && renderList(current)}
+              <div role="status" aria-live="polite">
+                {lastDeleted && (
+                  <div className="undo-bar">
+                    <span>Moved “{lastDeleted.title}” to the trash.</span>
+                    <button type="button" onClick={undoDelete}>
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLastDeleted(null)}
+                      aria-label="Dismiss message"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              {older.length > 0 && (
-                <details className="older">
-                  <summary>
-                    Older assignments ({older.length}), due more than{' '}
-                    {DAYS_TO_KEEP_OVERDUE} days ago
-                  </summary>
-                  {renderList(older)}
-                </details>
+              {active.length === 0 ? (
+                <p>No assignments yet. Add your first one.</p>
+              ) : (
+                <>
+                  <ListControls
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
+                    courseFilter={courseFilter}
+                    onCourseChange={setCourseFilter}
+                    statusFilter={statusFilter}
+                    onStatusChange={setStatusFilter}
+                    courses={courses}
+                    shownCount={shown.length}
+                    totalCount={active.length}
+                    onClear={clearFilters}
+                  />
+
+                  {shown.length === 0 && <p>No assignments match these filters.</p>}
+                  {shown.length > 0 && current.length === 0 && <p>Nothing due right now.</p>}
+                  {current.length > 0 && renderList(current)}
+
+                  {older.length > 0 && (
+                    <details className="older">
+                      <summary>
+                        Older assignments ({older.length}), due more than{' '}
+                        {DAYS_TO_KEEP_OVERDUE} days ago
+                      </summary>
+                      {renderList(older)}
+                    </details>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </section>
+            </section>
 
-        <TrashSection
-          items={trashed}
-          onRestore={restoreAssignment}
-          onDeleteForever={deleteForever}
-          onEmpty={emptyTrash}
-        />
+            <TrashSection
+              items={trashed}
+              onRestore={restoreAssignment}
+              onDeleteForever={deleteForever}
+              onEmpty={emptyTrash}
+            />
+          </div>
+        </div>
       </main>
     </>
   )

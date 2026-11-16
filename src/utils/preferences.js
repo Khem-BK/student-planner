@@ -2,15 +2,21 @@
 
 const PREFS_KEY = 'student-planner-preferences'
 
-// Does the computer already have "Increase contrast" turned on?
-function systemPrefersHighContrast() {
-  return Boolean(window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches)
+function matches(query) {
+  return Boolean(window.matchMedia && window.matchMedia(query).matches)
+}
+
+// Start with whatever the computer is already set to
+function systemTheme() {
+  if (matches('(prefers-contrast: more)')) return 'contrast'
+  if (matches('(prefers-color-scheme: dark)')) return 'dark'
+  return 'light'
 }
 
 export function defaultPreferences() {
   return {
     textSize: 'normal', // 'normal', 'large', or 'xlarge'
-    highContrast: systemPrefersHighContrast(),
+    theme: systemTheme(), // 'light', 'dark', or 'contrast'
     shortcuts: true,
   }
 }
@@ -18,7 +24,17 @@ export function defaultPreferences() {
 export function loadPreferences() {
   try {
     const saved = localStorage.getItem(PREFS_KEY)
-    return saved ? { ...defaultPreferences(), ...JSON.parse(saved) } : defaultPreferences()
+    if (!saved) return defaultPreferences()
+
+    const parsed = JSON.parse(saved)
+
+    // Older saves used highContrast: true/false. Convert them.
+    if (!parsed.theme && 'highContrast' in parsed) {
+      parsed.theme = parsed.highContrast ? 'contrast' : 'light'
+    }
+    delete parsed.highContrast
+
+    return { ...defaultPreferences(), ...parsed }
   } catch {
     return defaultPreferences()
   }
@@ -32,5 +48,5 @@ export function savePreferences(prefs) {
 export function applyPreferences(prefs) {
   const root = document.documentElement
   root.dataset.textSize = prefs.textSize
-  root.dataset.contrast = prefs.highContrast ? 'high' : 'normal'
+  root.dataset.theme = prefs.theme
 }
