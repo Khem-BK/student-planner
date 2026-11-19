@@ -79,5 +79,3 @@ src/
 
 **Khem Bahadur B K**
 Computer Science student, Youngstown State University
-
-Built as a learning project with guidance from Claude (Anthropic) as a coding tutor.
