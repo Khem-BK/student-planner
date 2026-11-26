@@ -1,6 +1,14 @@
 // Helpers for the list of assignments
 
-import { DAYS_TO_KEEP_OVERDUE, TRASH_DAYS, DAY_MS, addDays, todayText } from './dates'
+import {
+  DAYS_TO_KEEP_OVERDUE,
+  TRASH_DAYS,
+  DAY_MS,
+  addDays,
+  todayText,
+  nowTimeText,
+  formatTime,
+} from './dates'
 
 const STORAGE_KEY = 'student-planner-assignments'
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 }
@@ -29,17 +37,31 @@ export function isOld(assignment) {
   )
 }
 
+// Overdue = not done, and the due date has passed (or it is today and the due time has passed)
 export function isOverdue(assignment) {
-  return Boolean(
-    !assignment.completed && assignment.dueDate && assignment.dueDate < todayText()
+  if (assignment.completed || !assignment.dueDate) return false
+  const today = todayText()
+  if (assignment.dueDate < today) return true
+  return (
+    assignment.dueDate === today &&
+    Boolean(assignment.dueTime) &&
+    assignment.dueTime <= nowTimeText()
   )
 }
 
-// "Overdue", "Due today", or nothing
+// Due later today (not done, not overdue yet)
+export function isDueToday(assignment) {
+  return !assignment.completed && assignment.dueDate === todayText() && !isOverdue(assignment)
+}
+
+// "Overdue", "Due today", "Due today at 11:59 PM", or nothing
 export function getStatus(assignment) {
   if (isOverdue(assignment)) return { label: 'Overdue', className: 'badge-overdue' }
-  if (!assignment.completed && assignment.dueDate === todayText()) {
-    return { label: 'Due today', className: 'badge-today' }
+  if (isDueToday(assignment)) {
+    const label = assignment.dueTime
+      ? `Due today at ${formatTime(assignment.dueTime)}`
+      : 'Due today'
+    return { label, className: 'badge-today' }
   }
   return null
 }
@@ -57,7 +79,9 @@ export function sortAssignments(list, sortBy) {
       if (!a.dueDate && !b.dueDate) return 0
       if (!a.dueDate) return 1
       if (!b.dueDate) return -1
-      return a.dueDate.localeCompare(b.dueDate)
+      if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate)
+      // Same day: earlier time first, and "no time" goes to the end of the day
+      return (a.dueTime || '99:99').localeCompare(b.dueTime || '99:99')
     })
   } else if (sortBy === 'priority') {
     copy.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
@@ -74,7 +98,7 @@ export function filterAssignments(list, courseFilter, statusFilter) {
     if (statusFilter === 'todo' && a.completed) return false
     if (statusFilter === 'done' && !a.completed) return false
     if (statusFilter === 'overdue' && !isOverdue(a)) return false
-        if (statusFilter === 'today' && (a.completed || a.dueDate !== todayText())) return false
+    if (statusFilter === 'today' && !isDueToday(a)) return false
     return true
   })
 }

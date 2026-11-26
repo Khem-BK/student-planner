@@ -44,11 +44,14 @@ public class AiController {
                 Today is %s (%s). Use this to work out dates like "Friday" or "next week".
                 If a date has no year, pick the year that puts it closest to today.
                 Reply with ONLY a JSON object, no other text, in this form:
-                {"assignments": [{"title": "", "course": "", "dueDate": "", "priority": "", "notes": ""}]}
+                {"assignments": [{"title": "", "course": "", "dueDate": "", "dueTime": "", "priority": "", "notes": ""}]}
                 Rules for each assignment:
                 - "title": a short name, like "Lab 5 report" or "Midterm exam".
                 - "course": the course code or name if the text mentions one, otherwise "".
                 - "dueDate": YYYY-MM-DD, or "" if no date is given.
+                - "dueTime": HH:MM in 24 hour time (for example "23:59" for 11:59 pm, "12:15" for
+                  12:15 pm, "08:00" for 8 am), or "" if no time is given.
+                  Use "23:59" for midnight and "12:00" for noon. Never guess a time that is not in the text.
                 - "priority": "High" for exams, final projects, or anything called urgent or important.
                   "Low" for small readings or optional work. Otherwise "Medium".
                 - "notes": one short sentence about anything you were unsure about, or "".
@@ -59,7 +62,7 @@ public class AiController {
         return Map.of("result", claude.ask(system, text, 3000));
     }
 
-        // AI feature 2: break a big assignment into smaller steps (or say it doesn't need any)
+    // AI feature 2: break a big assignment into smaller steps (or say it doesn't need any)
     @PostMapping("/subtasks")
     public Map<String, String> subtasks(@RequestBody Map<String, String> request) {
         String title = clean(request.get("title"));
@@ -100,7 +103,7 @@ public class AiController {
 
         return Map.of("result", claude.ask(system, userMessage, 1500));
     }
-    
+
     private static String clean(String value) {
         return value == null ? "" : value.trim();
     }
@@ -112,5 +115,4 @@ public class AiController {
             return LocalDate.now();
         }
     }
-
 }

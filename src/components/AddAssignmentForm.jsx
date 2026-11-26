@@ -6,6 +6,7 @@ function AddAssignmentForm({ onAdd }) {
   const [title, setTitle] = useState('')
   const [course, setCourse] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [dueTime, setDueTime] = useState('')
   const [priority, setPriority] = useState('Medium')
   const [error, setError] = useState('')
 
@@ -13,17 +14,23 @@ function AddAssignmentForm({ onAdd }) {
     event.preventDefault()
     if (!title.trim()) return
 
+    if (dueTime && !dueDate) {
+      setError('Pick a due date to go with the time.')
+      return
+    }
+
     const dateError = validateDueDate(dueDate)
     if (dateError) {
       setError(dateError)
       return
     }
 
-    onAdd({ title: title.trim(), course: course.trim(), dueDate, priority })
+    onAdd({ title: title.trim(), course: course.trim(), dueDate, dueTime, priority })
 
     setTitle('')
     setCourse('')
     setDueDate('')
+    setDueTime('')
     setPriority('Medium')
     setError('')
   }
@@ -53,25 +60,42 @@ function AddAssignmentForm({ onAdd }) {
           />
         </div>
 
-        <div className="field">
-          <label htmlFor="dueDate">Due date</label>
-          <input
-            id="dueDate"
-            type="date"
-            value={dueDate}
-            onChange={(e) => {
-              setDueDate(e.target.value)
-              setError('')
-            }}
-            aria-invalid={error ? 'true' : undefined}
-            aria-describedby={error ? 'dueDate-error' : undefined}
-          />
-          {error && (
-            <p id="dueDate-error" className="error" role="alert">
-              {error}
-            </p>
-          )}
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="dueDate">Due date</label>
+            <input
+              id="dueDate"
+              type="date"
+              value={dueDate}
+              onChange={(e) => {
+                setDueDate(e.target.value)
+                setError('')
+              }}
+              aria-invalid={error ? 'true' : undefined}
+              aria-describedby={error ? 'dueDate-error' : undefined}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="dueTime">Due time (optional)</label>
+            <input
+              id="dueTime"
+              type="time"
+              value={dueTime}
+              onChange={(e) => {
+                setDueTime(e.target.value)
+                setError('')
+              }}
+              aria-describedby={error ? 'dueDate-error' : undefined}
+            />
+          </div>
         </div>
+
+        {error && (
+          <p id="dueDate-error" className="error" role="alert">
+            {error}
+          </p>
+        )}
 
         <div className="field">
           <label htmlFor="priority">Priority</label>

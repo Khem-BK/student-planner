@@ -51,8 +51,9 @@ function CalendarExport({ assignments }) {
       </div>
 
       <p id="calendar-hint" className="hint">
-        Exports the upcoming, unfinished assignments shown below. Use the filters to export one
-        course.
+        Exports the upcoming, unfinished assignments shown below. Assignments without a time
+        become all day events with reminders at 9 AM (or 8 AM on the due date). After changing
+        assignments, export again: the calendar does not update by itself.
       </p>
 
       <p role="status" className="success">

@@ -1,13 +1,16 @@
 // Builds a calendar file (.ics) that Apple Calendar, Google Calendar, and Outlook can import
 
-import { addDays, todayText } from './dates'
+import { addDays, todayText, nowTimeText, formatTime } from './dates'
 
-// Reminder choices. TRIGGER times count from midnight at the start of the due date.
+// Reminder choices.
+// "allDay" is used for assignments without a time (counted from midnight at the start of the day).
+// "timed" is used for assignments with a time (counted from the due time).
 export const REMINDERS = [
-  { value: 'day-before', label: '9 AM the day before', trigger: '-PT15H' },
-  { value: 'two-days', label: '9 AM two days before', trigger: '-P1DT15H' },
-  { value: 'morning-of', label: '8 AM on the due date', trigger: 'PT8H' },
-  { value: 'none', label: 'No reminder', trigger: null },
+  { value: 'day-before', label: '1 day before', allDay: '-PT15H', timed: '-P1D' },
+  { value: 'two-days', label: '2 days before', allDay: '-P1DT15H', timed: '-P2D' },
+  { value: 'hour-before', label: '1 hour before', allDay: 'PT8H', timed: '-PT1H' },
+  { value: 'at-time', label: 'At the due time', allDay: 'PT8H', timed: 'PT0M' },
+  { value: 'none', label: 'No reminder', allDay: null, timed: null },
 ]
 
 // Calendar files treat \ ; , and new lines as special, so they must be "escaped"
@@ -36,15 +39,25 @@ function compactDate(dateText) {
   return dateText.replaceAll('-', '')
 }
 
+// "23:59" -> "235900"
+function compactTime(timeText) {
+  return timeText.replace(':', '') + '00'
+}
+
 // The current time in calendar format, like 20261126T180000Z
 function timestamp() {
   return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 }
 
-// Only unfinished assignments with a due date of today or later
+// Only unfinished assignments that are not past due yet
 export function upcomingForCalendar(assignments) {
   const today = todayText()
-  return assignments.filter((a) => !a.completed && a.dueDate && a.dueDate >= today)
+  const now = nowTimeText()
+  return assignments.filter((a) => {
+    if (a.completed || !a.dueDate) return false
+    if (a.dueDate > today) return true
+    return a.dueDate === today && (!a.dueTime || a.dueTime > now)
+  })
 }
 
 export function buildCalendar(assignments, reminderValue) {
@@ -64,6 +77,7 @@ export function buildCalendar(assignments, reminderValue) {
       (s, i) => `${i + 1}. ${s.title}${s.done ? ' (done)' : ''}`
     )
     const description = [
+      a.dueTime ? `Due at ${formatTime(a.dueTime)}` : '',
       `Priority: ${a.priority}`,
       a.course ? `Course: ${a.course}` : '',
       ...(steps.length > 0 ? ['Steps:', ...steps] : []),
@@ -71,23 +85,35 @@ export function buildCalendar(assignments, reminderValue) {
       .filter(Boolean)
       .join('\n')
 
+    lines.push('BEGIN:VEVENT', `UID:${a.id}@student-planner`, `DTSTAMP:${stamp}`)
+
+    if (a.dueTime) {
+      // Timed event: a 15 minute block that starts at the due time (in your local time)
+      lines.push(
+        `DTSTART:${compactDate(a.dueDate)}T${compactTime(a.dueTime)}`,
+        'DURATION:PT15M'
+      )
+    } else {
+      // All day event
+      lines.push(
+        `DTSTART;VALUE=DATE:${compactDate(a.dueDate)}`,
+        `DTEND;VALUE=DATE:${compactDate(addDays(a.dueDate, 1))}`
+      )
+    }
+
     lines.push(
-      'BEGIN:VEVENT',
-      `UID:${a.id}@student-planner`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${compactDate(a.dueDate)}`,
-      `DTEND;VALUE=DATE:${compactDate(addDays(a.dueDate, 1))}`,
-      'TRANSP:TRANSPARENT', // an all day reminder, so it does not block your schedule
+      'TRANSP:TRANSPARENT', // does not block your schedule
       `SUMMARY:${escapeText(`Due: ${a.title}${a.course ? ` (${a.course})` : ''}`)}`,
       `DESCRIPTION:${escapeText(description)}`
     )
 
-    if (reminder.trigger) {
+    const trigger = a.dueTime ? reminder.timed : reminder.allDay
+    if (trigger) {
       lines.push(
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
         `DESCRIPTION:${escapeText(`${a.title} is due`)}`,
-        `TRIGGER:${reminder.trigger}`,
+        `TRIGGER:${trigger}`,
         'END:VALARM'
       )
     }

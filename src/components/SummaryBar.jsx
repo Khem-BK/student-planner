@@ -1,11 +1,9 @@
-import { isOverdue } from '../utils/assignments'
-import { todayText } from '../utils/dates'
+import { isOverdue, isDueToday } from '../utils/assignments'
 
 // Count boxes at the top. Clicking one filters the list.
 function SummaryBar({ assignments, activeStatus, onSelect }) {
-  const today = todayText()
   const todo = assignments.filter((a) => !a.completed).length
-  const dueToday = assignments.filter((a) => !a.completed && a.dueDate === today).length
+  const dueToday = assignments.filter((a) => isDueToday(a)).length
   const overdue = assignments.filter((a) => isOverdue(a)).length
   const done = assignments.filter((a) => a.completed).length
 

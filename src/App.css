@@ -909,3 +909,15 @@ button.link-button:disabled {
 .calendar-export .success:empty {
   display: none;
 }
+/* Date and time side by side */
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 12px;
+}
+/* Review list: room for the new time box on wide screens */
+@media (min-width: 60rem) {
+  .review-fields {
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  }
+}

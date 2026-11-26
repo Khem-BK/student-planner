@@ -46,3 +46,27 @@ export function validateDueDate(dateText) {
   }
   return ''
 }
+// The current time as text, like "14:05"
+export function nowTimeText() {
+  const now = new Date()
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+// Turn "23:59" into "11:59 PM"
+export function formatTime(timeText) {
+  if (!timeText) return ''
+  const [hours, minutes] = timeText.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, minutes, 0, 0)
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+// "Due Fri, Nov 27, 2026 at 11:59 PM", or "No due date"
+export function formatDue(dateText, timeText) {
+  if (!dateText) return 'No due date'
+  return timeText
+    ? `Due ${formatDate(dateText)} at ${formatTime(timeText)}`
+    : `Due ${formatDate(dateText)}`
+}

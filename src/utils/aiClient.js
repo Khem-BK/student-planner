@@ -41,14 +41,20 @@ export async function extractAssignments(text) {
   const parsed = extractJson(data.result)
   const list = Array.isArray(parsed.assignments) ? parsed.assignments : []
 
-  return list.slice(0, MAX_ITEMS).map((item) => ({
-    key: crypto.randomUUID(),
-    title: String(item.title || '').trim(),
-    course: String(item.course || '').trim(),
-    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : '',
-    priority: PRIORITIES.includes(item.priority) ? item.priority : 'Medium',
-    notes: String(item.notes || '').trim(),
-  }))
+  // Never trust the AI blindly: check every field of every item
+  return list.slice(0, MAX_ITEMS).map((item) => {
+    const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : ''
+    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(item.dueTime)
+    return {
+      key: crypto.randomUUID(),
+      title: String(item.title || '').trim(),
+      course: String(item.course || '').trim(),
+      dueDate,
+      dueTime: dueDate && validTime ? item.dueTime : '', // a time only makes sense with a date
+      priority: PRIORITIES.includes(item.priority) ? item.priority : 'Medium',
+      notes: String(item.notes || '').trim(),
+    }
+  })
 }
 
 // AI feature 2: assignment (+ optional pasted instructions) -> suggested steps,

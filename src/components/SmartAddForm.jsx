@@ -7,6 +7,7 @@ const MAX_LENGTH = 15000
 // Returns a problem message for one suggestion, or '' if it is fine
 function checkItem(item) {
   if (!item.title.trim()) return 'Add a title.'
+  if (item.dueTime && !item.dueDate) return 'Pick a due date to go with the time.'
   return validateDueDate(item.dueDate)
 }
 
@@ -95,6 +96,7 @@ function SmartAddForm({ onAddMany }) {
         title: item.title.trim(),
         course: item.course.trim(),
         dueDate: item.dueDate,
+        dueTime: item.dueTime,
         priority: item.priority,
       }))
     )
@@ -130,7 +132,7 @@ function SmartAddForm({ onAddMany }) {
               maxLength={MAX_LENGTH}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Paste a syllabus schedule, a Blackboard announcement, or an email. Or type one: Stats homework 12 due Friday, high priority"
+              placeholder="Paste a syllabus schedule, a Blackboard announcement, or an email. Or type one: Stats homework 12 due Friday at 11:59 pm, high priority"
               aria-describedby="ai-hint"
             />
             <p id="ai-hint" className="hint">
@@ -230,6 +232,16 @@ function SmartAddForm({ onAddMany }) {
                           value={item.dueDate}
                           onChange={(e) => updateItem(item.key, 'dueDate', e.target.value)}
                           aria-invalid={problem ? 'true' : undefined}
+                        />
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor={`ai-time-${item.key}`}>Due time</label>
+                        <input
+                          id={`ai-time-${item.key}`}
+                          type="time"
+                          value={item.dueTime}
+                          onChange={(e) => updateItem(item.key, 'dueTime', e.target.value)}
                         />
                       </div>
 
