@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatDate, validateDueDate } from '../utils/dates'
 import { getStatus } from '../utils/assignments'
+import SubtaskPanel from './SubtaskPanel'
 
 // One assignment card. It handles its own edit mode.
 function AssignmentItem({ assignment, onToggle, onSave, onDelete }) {
@@ -151,6 +152,8 @@ function AssignmentItem({ assignment, onToggle, onSave, onDelete }) {
           </button>
         </div>
       </div>
+
+      <SubtaskPanel assignment={a} onSave={onSave} />
     </li>
   )
 }

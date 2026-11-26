@@ -17,7 +17,7 @@ async function postJson(url, data) {
     throw new Error('Could not reach the AI helper. Is the backend running?')
   }
   if (!response.ok) {
-    throw new Error('The AI helper is not available right now. You can still add assignments by hand.')
+    throw new Error('The AI helper is not available right now. You can still add things by hand.')
   }
   return response.json()
 }
@@ -29,6 +29,8 @@ function extractJson(text) {
   try {
     return JSON.parse(text.slice(start, end + 1))
   } catch {
+    // Show the AI's raw reply in the browser console (Cmd + Option + J) to help debugging
+    console.warn('AI reply that could not be read:', text)
     throw new Error("The AI's answer could not be read. Please try again or add it by hand.")
   }
 }
@@ -39,13 +41,33 @@ export async function extractAssignments(text) {
   const parsed = extractJson(data.result)
   const list = Array.isArray(parsed.assignments) ? parsed.assignments : []
 
-  // Never trust the AI blindly: check every field of every item
   return list.slice(0, MAX_ITEMS).map((item) => ({
-    key: crypto.randomUUID(), // only used on the review screen
+    key: crypto.randomUUID(),
     title: String(item.title || '').trim(),
     course: String(item.course || '').trim(),
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : '',
     priority: PRIORITIES.includes(item.priority) ? item.priority : 'Medium',
     notes: String(item.notes || '').trim(),
   }))
+}
+
+// AI feature 2: assignment (+ optional pasted instructions) -> suggested steps,
+// or a reason why none are needed (NOT saved yet)
+export async function suggestSubtasks(assignment, details = '') {
+  const data = await postJson('/api/ai/subtasks', {
+    title: assignment.title,
+    course: assignment.course || '',
+    dueDate: assignment.dueDate || '',
+    details,
+  })
+  const parsed = extractJson(data.result)
+  const list = Array.isArray(parsed.subtasks) ? parsed.subtasks : []
+
+  return {
+    steps: list
+      .map((step) => String(step || '').trim())
+      .filter(Boolean)
+      .slice(0, 10),
+    reason: String(parsed.reason || '').trim(),
+  }
 }

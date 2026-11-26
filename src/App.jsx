@@ -7,6 +7,7 @@ import TrashSection from './components/TrashSection'
 import AccessibilityPanel from './components/AccessibilityPanel'
 import SummaryBar from './components/SummaryBar'
 import SmartAddForm from './components/SmartAddForm'
+import CalendarExport from './components/CalendarExport'
 import { DAYS_TO_KEEP_OVERDUE, formatDate, todayText } from './utils/dates'
 import {
   loadAssignments,
@@ -255,6 +256,8 @@ function App() {
                     totalCount={active.length}
                     onClear={clearFilters}
                   />
+
+                  <CalendarExport assignments={shown} />
 
                   {shown.length === 0 && <p>No assignments match these filters.</p>}
                   {shown.length > 0 && current.length === 0 && <p>Nothing due right now.</p>}
