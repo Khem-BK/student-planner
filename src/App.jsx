@@ -6,6 +6,7 @@ import ListControls from './components/ListControls'
 import TrashSection from './components/TrashSection'
 import AccessibilityPanel from './components/AccessibilityPanel'
 import SummaryBar from './components/SummaryBar'
+import SmartAddForm from './components/SmartAddForm'
 import { DAYS_TO_KEEP_OVERDUE, formatDate, todayText } from './utils/dates'
 import {
   loadAssignments,
@@ -199,6 +200,7 @@ function App() {
         <div className="layout">
           {/* Left column on laptops: the add form */}
           <div className="layout-side">
+            <SmartAddForm onAdd={addAssignment} />
             <AddAssignmentForm onAdd={addAssignment} />
           </div>
 
