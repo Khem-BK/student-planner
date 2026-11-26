@@ -3,6 +3,7 @@
 import { todayText } from './dates'
 
 const PRIORITIES = ['High', 'Medium', 'Low']
+const MAX_ITEMS = 40
 
 async function postJson(url, data) {
   let response
@@ -16,7 +17,7 @@ async function postJson(url, data) {
     throw new Error('Could not reach the AI helper. Is the backend running?')
   }
   if (!response.ok) {
-    throw new Error('The AI helper is not available right now. You can still add the assignment by hand.')
+    throw new Error('The AI helper is not available right now. You can still add assignments by hand.')
   }
   return response.json()
 }
@@ -32,17 +33,19 @@ function extractJson(text) {
   }
 }
 
-// AI feature 1: sentence -> suggested assignment (NOT saved yet)
-export async function parseAssignment(text) {
-  const data = await postJson('/api/ai/parse-assignment', { text, today: todayText() })
+// AI feature 1: pasted text -> list of suggested assignments (NOT saved yet)
+export async function extractAssignments(text) {
+  const data = await postJson('/api/ai/extract-assignments', { text, today: todayText() })
   const parsed = extractJson(data.result)
+  const list = Array.isArray(parsed.assignments) ? parsed.assignments : []
 
-  // Never trust the AI blindly: check every field
-  return {
-    title: String(parsed.title || '').trim(),
-    course: String(parsed.course || '').trim(),
-    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate) ? parsed.dueDate : '',
-    priority: PRIORITIES.includes(parsed.priority) ? parsed.priority : 'Medium',
-    notes: String(parsed.notes || '').trim(),
-  }
+  // Never trust the AI blindly: check every field of every item
+  return list.slice(0, MAX_ITEMS).map((item) => ({
+    key: crypto.randomUUID(), // only used on the review screen
+    title: String(item.title || '').trim(),
+    course: String(item.course || '').trim(),
+    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(item.dueDate) ? item.dueDate : '',
+    priority: PRIORITIES.includes(item.priority) ? item.priority : 'Medium',
+    notes: String(item.notes || '').trim(),
+  }))
 }

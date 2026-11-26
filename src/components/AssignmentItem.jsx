@@ -11,7 +11,7 @@ function AssignmentItem({ assignment, onToggle, onSave, onDelete }) {
   const a = assignment
 
   function startEditing() {
-    setDraft({ ...assignment }) // work on a copy until Save
+    setDraft({ ...assignment })
     setError('')
     setIsEditing(true)
   }
@@ -30,7 +30,6 @@ function AssignmentItem({ assignment, onToggle, onSave, onDelete }) {
     event.preventDefault()
     if (!draft.title.trim()) return
 
-    // Only check the date if it was changed
     const dateError =
       draft.dueDate !== assignment.dueDate ? validateDueDate(draft.dueDate) : ''
     if (dateError) {
@@ -106,40 +105,51 @@ function AssignmentItem({ assignment, onToggle, onSave, onDelete }) {
   }
 
   const status = getStatus(a)
+  const priorityClass = a.priority.toLowerCase()
 
   return (
-    <li className={a.completed ? 'done' : ''}>
-      <div className="assignment-main">
+    <li className={`assignment-card edge-${priorityClass}${a.completed ? ' done' : ''}`}>
+      <div className="assignment-row">
         <input
           type="checkbox"
           id={`done-${a.id}`}
           checked={a.completed}
           onChange={() => onToggle(a.id)}
         />
-        <label htmlFor={`done-${a.id}`} className="assignment-title">
-          {a.title}
-        </label>
-        {status && <span className={`badge ${status.className}`}>{status.label}</span>}
-      </div>
 
-      <p className="details">
-        {a.course || 'No course'} · Due {formatDate(a.dueDate)} ·{' '}
-        <span className={`priority priority-${a.priority.toLowerCase()}`}>
-          {a.priority} priority
-        </span>
-      </p>
+        <div className="assignment-info">
+          <div className="assignment-top">
+            <label htmlFor={`done-${a.id}`} className="assignment-title">
+              {a.title}
+            </label>
+            {status && <span className={`badge ${status.className}`}>{status.label}</span>}
+          </div>
 
-      <div className="actions">
-        <button type="button" onClick={startEditing} aria-label={`Edit ${a.title}`}>
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(a.id)}
-          aria-label={`Delete ${a.title}`}
-        >
-          Delete
-        </button>
+          <p className="details">
+            {a.course && <span className="course-chip">{a.course}</span>}
+            <span>{a.dueDate ? `Due ${formatDate(a.dueDate)}` : 'No due date'}</span>
+            <span className={`priority priority-${priorityClass}`}>{a.priority} priority</span>
+          </p>
+        </div>
+
+        <div className="item-actions">
+          <button
+            type="button"
+            className="small"
+            onClick={startEditing}
+            aria-label={`Edit ${a.title}`}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="small"
+            onClick={() => onDelete(a.id)}
+            aria-label={`Delete ${a.title}`}
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </li>
   )

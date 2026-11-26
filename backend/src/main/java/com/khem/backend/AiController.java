@@ -16,6 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/ai")
 public class AiController {
 
+    private static final int MAX_TEXT_LENGTH = 15000;
+
     private final ClaudeClient claude;
 
     // Spring hands us the ClaudeClient automatically
@@ -23,31 +25,38 @@ public class AiController {
         this.claude = claude;
     }
 
-    // AI feature 1: turn a sentence into assignment details
-    @PostMapping("/parse-assignment")
-    public Map<String, String> parseAssignment(@RequestBody Map<String, String> request) {
+    // AI feature 1: find every assignment in pasted text (one sentence or a whole syllabus)
+    @PostMapping("/extract-assignments")
+    public Map<String, String> extractAssignments(@RequestBody Map<String, String> request) {
         String text = clean(request.get("text"));
-        if (text.isEmpty() || text.length() > 1000) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please type a short description.");
+        if (text.isEmpty() || text.length() > MAX_TEXT_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Please paste some text (up to " + MAX_TEXT_LENGTH + " characters).");
         }
 
         LocalDate today = parseDateOrToday(request.get("today"));
         String dayName = today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.US);
 
         String system = """
-                You turn a student's description of an assignment into JSON.
-                Today is %s (%s).
-                Reply with ONLY a JSON object, no other text, with exactly these keys:
-                "title": a short name for the assignment,
-                "course": the course code or name, or "" if not mentioned,
-                "dueDate": the due date as YYYY-MM-DD, worked out from today's date for words
-                           like "tomorrow" or "Friday" (always the next one coming), or "" if no date is given,
-                "priority": "High", "Medium", or "Low". Use "Medium" if not stated.
-                            Use "High" for words like urgent, important, or high priority,
-                "notes": one short sentence about anything you were unsure about, or "".
+                You read text that a student pasted: a syllabus, a course announcement, an email,
+                or a short description of one assignment. Find every assignment, quiz, exam,
+                project, reading, or other deadline in it.
+                Today is %s (%s). Use this to work out dates like "Friday" or "next week".
+                If a date has no year, pick the year that puts it closest to today.
+                Reply with ONLY a JSON object, no other text, in this form:
+                {"assignments": [{"title": "", "course": "", "dueDate": "", "priority": "", "notes": ""}]}
+                Rules for each assignment:
+                - "title": a short name, like "Lab 5 report" or "Midterm exam".
+                - "course": the course code or name if the text mentions one, otherwise "".
+                - "dueDate": YYYY-MM-DD, or "" if no date is given.
+                - "priority": "High" for exams, final projects, or anything called urgent or important.
+                  "Low" for small readings or optional work. Otherwise "Medium".
+                - "notes": one short sentence about anything you were unsure about, or "".
+                Never invent assignments that are not in the text.
+                If there are none, reply {"assignments": []}. List at most 40.
                 """.formatted(today, dayName);
 
-        return Map.of("result", claude.ask(system, text, 300));
+        return Map.of("result", claude.ask(system, text, 3000));
     }
 
     // AI feature 2: break an assignment into smaller steps (used tomorrow)

@@ -85,6 +85,16 @@ function App() {
     }
     setAssignments([...assignments, newAssignment])
   }
+    // Add several assignments at once (from the AI review list)
+  function addManyAssignments(list) {
+    const newOnes = list.map((fields) => ({
+      id: crypto.randomUUID(),
+      ...fields,
+      completed: false,
+      deletedAt: null,
+    }))
+    setAssignments([...assignments, ...newOnes])
+  }
 
   function updateAssignment(updated) {
     setAssignments(assignments.map((a) => (a.id === updated.id ? updated : a)))
@@ -200,7 +210,7 @@ function App() {
         <div className="layout">
           {/* Left column on laptops: the add form */}
           <div className="layout-side">
-            <SmartAddForm onAdd={addAssignment} />
+            <SmartAddForm onAddMany={addManyAssignments} />
             <AddAssignmentForm onAdd={addAssignment} />
           </div>
 
